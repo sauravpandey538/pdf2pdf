@@ -27,7 +27,7 @@ const Footer = () => {
             <FaGithub size={18} />
           </a>
           <a
-            href="https://saurav0325.vercel.app/"
+            href="https://sauravpandey.com"
             target="_blank"
             rel="noopener noreferrer"
             className="text-gray-400 hover:text-white transition-colors"
@@ -35,7 +35,7 @@ const Footer = () => {
             <span className="text-sm">Portfolio</span>
           </a>
           <a
-            href="mailto:sauravpandey0325@gmail.com"
+            href="mailto:hi@sauravpandey.com"
             className="text-gray-400 hover:text-white transition-colors"
           >
             <FaEnvelope size={18} />

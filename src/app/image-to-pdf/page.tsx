@@ -4,15 +4,15 @@ import { Button } from "@/components/ui/button"; // Replace with your ShadCN but
 import { Input } from "@/components/ui/input"; // Replace with your ShadCN input import
 import { Card, CardHeader, CardContent } from "@/components/ui/card"; // Replace with your ShadCN card import
 import { ThemeController } from "./theme-controller";
-let heic2any: any;
+import { toast } from "@/hooks/use-toast";
 
 export default function UploadAndGeneratePDF() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [fileChanging, setFileChanging] = useState<boolean>(false);
-
-  const [error, setError] = useState<string | null>(null);
+  const [clickedImage, setClickedImage] = useState<number>(0);
   const [isThereTemplate, setIsThereTemplate] = useState<boolean>(false);
+  let heic2any: any;
 
   useEffect(() => {
     // Dynamically import heic2any on the client side
@@ -38,6 +38,7 @@ export default function UploadAndGeneratePDF() {
       const convertedFiles: File[] = [];
 
       for (const file of filesArray) {
+        console.log("File type is :", file.type);
         if (file.type === "image/heic") {
           try {
             setFileChanging(true);
@@ -45,12 +46,11 @@ export default function UploadAndGeneratePDF() {
               blob: file,
               toType: "image/jpeg",
             });
-
+            console.log("converted blog is :", convertedBlob);
             // Ensure the result is a single Blob
             const finalBlob = Array.isArray(convertedBlob)
               ? convertedBlob[0]
               : convertedBlob;
-
             const convertedFile = new File(
               [finalBlob],
               file.name.replace(/\.heic$/i, ".jpeg"),
@@ -59,9 +59,8 @@ export default function UploadAndGeneratePDF() {
               }
             );
             convertedFiles.push(convertedFile);
-          } catch (error) {
-            ////console.error("Error converting .HEIC file:", error);
-            alert("Failed to convert HEIC file. Please try another format.");
+          } catch (error: any) {
+            console.error("Error converting .HEIC file:", error.message);
           } finally {
             setFileChanging(false);
           }
@@ -94,17 +93,7 @@ export default function UploadAndGeneratePDF() {
   };
 
   const generatePDF = async () => {
-    if (!isThereTemplate) {
-      setError("Please select a template first.");
-      return;
-    }
-    if (selectedFiles.length === 0) {
-      setError("No files selected.");
-      return;
-    }
-
     setIsGenerating(true);
-    setError(null);
 
     const formData = new FormData();
     selectedFiles.forEach((file) => formData.append("file", file));
@@ -126,11 +115,26 @@ export default function UploadAndGeneratePDF() {
       link.download = "generated.pdf";
       link.click();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+      toast({
+        className: "bg-green-700 text-white font-bold",
+        title: "Success",
+        description: "Your pdf is ready to preview",
+      });
+    } catch (error: any) {
       //console.error("Error generating PDF:", error);
-      setError("Failed to generate PDF. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Please try again later",
+      });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleClickImage = (ind: number) => {
+    if (clickedImage === 0) {
+      setClickedImage(ind);
     }
   };
 
@@ -172,13 +176,33 @@ export default function UploadAndGeneratePDF() {
                       src={URL.createObjectURL(file)}
                       alt={`Preview ${index}`}
                       className="w-full h-full object-cover"
+                      onClick={() => handleClickImage(index + 1)}
                     />
-                    <button
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                    {clickedImage === index + 1 && (
+                      <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50 py-10 px-2">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt="Preview"
+                          className="max-w-full max-h-full rounded relative"
+                        />
+                        <Button
+                          className="absolute top-2 right-2 rounded-full"
+                          size={"icon"}
+                          onClick={() => setClickedImage(0)}
+                        >
+                          {" "}
+                          &times;
+                        </Button>
+                      </div>
+                    )}
+
+                    <Button
+                      size={"icon"}
+                      className="absolute top-1 right-1 rounded-full"
                       onClick={() => removeFile(index)}
                     >
                       &times;
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -197,9 +221,6 @@ export default function UploadAndGeneratePDF() {
                   ? "Generating PDF..."
                   : "Generate PDF"}
               </Button>
-
-              {/* Error Message */}
-              {error && <p className="text-red-500 mt-2">{error}</p>}
             </div>
           </CardContent>
         </Card>

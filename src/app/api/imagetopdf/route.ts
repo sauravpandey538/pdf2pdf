@@ -62,6 +62,14 @@ export async function POST(req: NextRequest) {
       const yOffset = (pageHeight - imageHeight) / 2; // Center the image vertically
       const xOffset = padding; // Apply padding to the left side
 
+      console.log(
+        "This is laptop preview",
+        xOffset,
+        yOffset,
+        imageWidth,
+        imageHeight
+      );
+
       page.drawImage(image, {
         x: xOffset,
         y: yOffset,

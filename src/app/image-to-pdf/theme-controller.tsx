@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button"; // Replace with your ShadCN button import
 import { Input } from "@/components/ui/input"; // Replace with your ShadCN input import
 import { Card, CardHeader, CardContent } from "@/components/ui/card"; // Replace with your ShadCN card import
+import { toast } from "@/hooks/use-toast";
+// import { showToast } from "@/components/helpers/toast";
 
 interface ThemeControllerPrope {
   onsuccess: (status: { status: boolean; template?: File }) => void;
@@ -56,11 +58,6 @@ export const ThemeController: React.FC<ThemeControllerPrope> = ({
     setSelectedTemplate(template);
   };
 
-  // useEffect(() => {
-  //   if (selectedTemplate) {
-  //     drawCanvas(selectedTemplate);
-  //   }
-  // }, [formData, selectedTemplate]);
   const lineHeight = 50; // Space between lines, adjust this as needed
 
   const wrapText = (
@@ -102,7 +99,11 @@ export const ThemeController: React.FC<ThemeControllerPrope> = ({
 
   const drawCanvas = (template: number) => {
     if (Object.values(formData).some((field) => field.trim() === "")) {
-      alert("Please add all fields");
+      return toast({
+        variant: "destructive",
+        title: "Don't hurry !",
+        description: "It seems like some details are missing or incomplete.",
+      });
     }
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -162,35 +163,39 @@ export const ThemeController: React.FC<ThemeControllerPrope> = ({
       ctx.font = "40px Arial"; // Larger font size for emphasis
       wrapText(`${formData.subjectName}`, 180, 500, 500, ctx);
       //console.log("url is :", canvas.toDataURL("image/png"));
+      console.log("canvas is created and url is saved to state");
       setCanvasDataUrl(canvas.toDataURL("image/png"));
+      handleSubmit(canvas.toDataURL("image/png"));
     };
   };
-  const handleSubmit = () => {
-    if (canvasDataUrl) {
-      const file = handleCanvasDataURL(canvasDataUrl);
-      onsuccess({ status: true, template: file });
-    } else {
-      onsuccess({ status: false });
-    }
+  const handleSubmit = (url: string) => {
+    const file = handleCanvasDataURL(url);
+    onsuccess({ status: true, template: file });
+    toast({
+      className: "bg-green-700 text-white font-bold",
+      title: "Success",
+      description:
+        "Your template has been added. Please add images to generate a pdf.",
+    });
   };
 
   return (
-    <div className="max-w-4xl my-10">
+    <div className="max-w-4xl m-2">
       <Card>
         <CardHeader>
           <h2 className="text-xl font-semibold">Choose a Template</h2>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-4 flex gap-10 flex-wrap">
             {/* Template Selection */}
-            <div className="flex justify-around mt-4 gap-3">
+            <div className="flex justify-around mt-4 gap-3 flex-wrap">
               {[
                 "https://officetemplatesonline.com/wp-content/uploads/2021/04/assignment-cover-page-template-for-ms-word.jpg",
-                "https://officetemplatesonline.com/wp-content/uploads/2021/04/educational-assignment-cover-page-template-for-ms-word.jpg",
+                // "https://officetemplatesonline.com/wp-content/uploads/2021/04/educational-assignment-cover-page-template-for-ms-word.jpg",
               ].map((template, index) => (
                 <div
                   key={index}
-                  className={`h-96 w-72 overflow-hidden cursor-pointer ${
+                  className={`h-[370px] w-72 overflow-hidden cursor-pointer ${
                     index + 1 === selectedTemplate && "border-4 border-blue-500"
                   }`}
                   onClick={() => handleTemplateSelect(index + 1)}
@@ -202,7 +207,7 @@ export const ThemeController: React.FC<ThemeControllerPrope> = ({
 
             {/* Form and Canvas Preview */}
             {selectedTemplate && (
-              <div className="mt-4">
+              <div className="mt-4 flex-1">
                 <h3 className="text-xl font-semibold">Enter Student Details</h3>
                 <form className="space-y-4">
                   {[
@@ -242,9 +247,17 @@ export const ThemeController: React.FC<ThemeControllerPrope> = ({
                     className="hidden"
                   />
                   <Button
-                    onClick={() => {
-                      drawCanvas(selectedTemplate);
-                      handleSubmit();
+                    onClick={async () => {
+                      try {
+                        drawCanvas(selectedTemplate);
+                      } catch (error) {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description:
+                            "Error generating template for you. Please try again later.",
+                        });
+                      }
                     }}
                     className="mt-4"
                   >
