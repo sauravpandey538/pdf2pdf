@@ -1,10 +1,10 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button"; // Replace with your ShadCN button import
 import { Input } from "@/components/ui/input"; // Replace with your ShadCN input import
 import { Card, CardHeader, CardContent } from "@/components/ui/card"; // Replace with your ShadCN card import
 import { ThemeController } from "./theme-controller";
-import heic2any from "heic2any";
+let heic2any: any;
 
 export default function UploadAndGeneratePDF() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -13,16 +13,26 @@ export default function UploadAndGeneratePDF() {
 
   const [error, setError] = useState<string | null>(null);
   const [isThereTemplate, setIsThereTemplate] = useState<boolean>(false);
-  //   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //     if (event.target.files) {
-  //       const filesArray = Array.from(event.target.files);
-  //       setSelectedFiles((prev) => [...prev, ...filesArray]);
-  //     }
-  //   };
 
+  useEffect(() => {
+    // Dynamically import heic2any on the client side
+    if (typeof window !== "undefined") {
+      import("heic2any")
+        .then((module) => {
+          heic2any = module.default;
+        })
+        .catch((err) => {
+          console.error("Failed to load heic2any:", err);
+        });
+    }
+  }, []);
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
+    if (typeof window === "undefined") {
+      console.error("window is not defined.");
+      return;
+    }
     if (event.target.files) {
       const filesArray = Array.from(event.target.files);
       const convertedFiles: File[] = [];
