@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib"; // Import pdf-lib
 import sharp from "sharp";
 
+export const config = {
+  api: {
+    responseLimit: "50mb",
+  },
+};
 export async function POST(req: NextRequest) {
   try {
     const data = await req.formData();
@@ -61,14 +66,6 @@ export async function POST(req: NextRequest) {
       // Ensure the image fits inside the page with the padding
       const yOffset = (pageHeight - imageHeight) / 2; // Center the image vertically
       const xOffset = padding; // Apply padding to the left side
-
-      console.log(
-        "This is laptop preview",
-        xOffset,
-        yOffset,
-        imageWidth,
-        imageHeight
-      );
 
       page.drawImage(image, {
         x: xOffset,

@@ -105,6 +105,23 @@ export const ThemeController: React.FC<ThemeControllerPrope> = ({
         description: "It seems like some details are missing or incomplete.",
       });
     }
+
+    const semisterRegix = /^[1-8]$/;
+    const sectionRegix = /^[a-iA-I]$/;
+    const lcidRegix = /^LC\d{11}$/;
+    if (
+      !semisterRegix.test(formData.semester) ||
+      !sectionRegix.test(formData.section) ||
+      !lcidRegix.test(formData.LCIDNumber)
+    ) {
+      return toast({
+        variant: "destructive",
+        title: "Don't hurry !",
+        description:
+          "It seems like you didnt put the semister, section or LCID number in valid way",
+      });
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
