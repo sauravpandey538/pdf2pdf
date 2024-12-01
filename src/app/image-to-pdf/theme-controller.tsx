@@ -18,12 +18,12 @@ export const ThemeController: React.FC<ThemeControllerPrope> = ({
   const [canvasDataUrl, setCanvasDataUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    name: "",
-    semester: "",
-    section: "",
-    LCIDNumber: "",
-    teacherName: "",
-    subjectName: "",
+    name: "Saurav",
+    semester: "3",
+    section: "A",
+    LCIDNumber: "LC00017002801",
+    teacherName: "ss",
+    subjectName: "s",
   });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
