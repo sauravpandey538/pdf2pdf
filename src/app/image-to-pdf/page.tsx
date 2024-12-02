@@ -44,7 +44,7 @@ const UploadAndGeneratePDF: React.FC = () => {
                     blob: file,
                     toType: "image/jpeg",
                   });
-
+                  // testing
                   const finalBlob = Array.isArray(convertedBlob)
                     ? convertedBlob[0]
                     : convertedBlob;
