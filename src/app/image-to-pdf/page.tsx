@@ -6,7 +6,6 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Document, Page, Image, StyleSheet, pdf } from "@react-pdf/renderer";
 import { toast } from "@/hooks/use-toast";
 import pica from "pica";
-import heic2any from "heic2any";
 import { ThemeController } from "./theme-controller";
 
 const styles = StyleSheet.create({
@@ -38,20 +37,25 @@ const UploadAndGeneratePDF: React.FC = () => {
           filesArray.map(async (file) => {
             try {
               if (file.type === "image/heic") {
-                const convertedBlob = await heic2any({
-                  blob: file,
-                  toType: "image/jpeg",
-                });
-                const finalBlob = Array.isArray(convertedBlob)
-                  ? convertedBlob[0]
-                  : convertedBlob;
-                return new File(
-                  [finalBlob],
-                  file.name.replace(/\.heic$/i, ".jpeg"),
-                  {
-                    type: "image/jpeg",
-                  }
-                );
+                if (typeof window !== "undefined") {
+                  const heic2any = require("heic2any");
+
+                  const convertedBlob = await heic2any({
+                    blob: file,
+                    toType: "image/jpeg",
+                  });
+
+                  const finalBlob = Array.isArray(convertedBlob)
+                    ? convertedBlob[0]
+                    : convertedBlob;
+                  return new File(
+                    [finalBlob],
+                    file.name.replace(/\.heic$/i, ".jpeg"),
+                    {
+                      type: "image/jpeg",
+                    }
+                  );
+                }
               } else {
                 return await resizeAndConvertToJPEG(file);
               }
