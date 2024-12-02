@@ -1,18 +1,12 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import {
-  Document,
-  Page,
-  Text,
-  Image,
-  View,
-  StyleSheet,
-  pdf,
-} from "@react-pdf/renderer";
+import { Document, Page, Image, StyleSheet, pdf } from "@react-pdf/renderer";
 import { toast } from "@/hooks/use-toast";
+import pica from "pica";
+import heic2any from "heic2any";
 import { ThemeController } from "./theme-controller";
 
 const styles = StyleSheet.create({
@@ -30,83 +24,91 @@ const styles = StyleSheet.create({
 const UploadAndGeneratePDF: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [fileChanging, setFileChanging] = useState(false);
-  const [clickedImage, setClickedImage] = useState<number>(0);
   const [fileName, setFileName] = useState("generated.pdf");
-  let heic2any: any;
-  useEffect(() => {
-    // Dynamically import heic2any on the client side
-    if (typeof window !== "undefined") {
-      import("heic2any")
-        .then((module) => {
-          heic2any = module.default;
-        })
-        .catch((err) => {
-          console.error("Failed to load heic2any:", err);
-        });
-    }
-  }, []);
-
+  const [isRendering, setIsRendering] = useState(false);
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    console.log(event.target.files);
+    setIsRendering(true);
     if (event.target.files) {
       const filesArray = Array.from(event.target.files);
 
       try {
-        setFileChanging(true);
-
         const convertedFiles = await Promise.all(
           filesArray.map(async (file) => {
-            console.log("for file:", file);
-            if (file.type === "image/heic") {
-              try {
+            try {
+              if (file.type === "image/heic") {
                 const convertedBlob = await heic2any({
                   blob: file,
                   toType: "image/jpeg",
                 });
-
-                console.log("Converted blob is:", convertedBlob);
-
-                // Ensure the result is a single Blob
                 const finalBlob = Array.isArray(convertedBlob)
                   ? convertedBlob[0]
                   : convertedBlob;
-
                 return new File(
                   [finalBlob],
                   file.name.replace(/\.heic$/i, ".jpeg"),
-                  { type: "image/jpeg" }
+                  {
+                    type: "image/jpeg",
+                  }
                 );
-              } catch (error: any) {
-                console.log(error.message);
-                setSelectedFiles([]);
-                toast({
-                  variant: "destructive",
-                  title: "Error",
-                  description: "Error converting .HEIC file",
-                });
-                return null; // Skip the file if conversion fails
+              } else {
+                return await resizeAndConvertToJPEG(file);
               }
+            } catch (error) {
+              console.error(`Error processing file: ${file.name}`, error);
+              toast({
+                variant: "destructive",
+                title: "File Conversion Error",
+                description: `Could not convert file: ${file.name}. Skipping...`,
+              });
+              return null;
             }
-            return file; // Return the file unchanged if not HEIC
           })
         );
 
-        // Filter out any null values from failed conversions
+        // Remove any files that failed conversion
         const validFiles = convertedFiles.filter(
           (file) => file !== null
         ) as File[];
-
         setSelectedFiles((prev) => [...prev, ...validFiles]);
-      } finally {
-        setFileChanging(false); // Set this state only once after processing all files
+      } catch (error) {
+        console.error("Error converting files:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to process some files. Please try again.",
+        });
       }
     }
+    setIsRendering(false);
   };
-  const removeFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+
+  const resizeAndConvertToJPEG = async (file: File): Promise<File> => {
+    const img = new window.Image();
+    img.src = URL.createObjectURL(file);
+
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = (err) => reject(err);
+    });
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const maxWidth = 1024; // Resize to max width (optional)
+    const scaleFactor = maxWidth / img.width;
+
+    canvas.width = img.width * scaleFactor;
+    canvas.height = img.height * scaleFactor;
+
+    ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const picaInstance = pica();
+    const blob = await picaInstance.toBlob(canvas, "image/jpeg", 0.9); // Resize and convert to JPEG
+    return new File([blob], file.name.replace(/\..+$/, ".jpeg"), {
+      type: "image/jpeg",
+    });
   };
 
   const generatePDF = async () => {
@@ -114,23 +116,24 @@ const UploadAndGeneratePDF: React.FC = () => {
     if (!pdfFilenameRegex.test(fileName)) {
       return toast({
         variant: "destructive",
-        title: "Invalid FileName",
-        description: "Please provide valid file name including .pdf at last.",
+        title: "Invalid Filename",
+        description: "Please provide a valid filename ending in .pdf.",
       });
     }
+
     setIsGenerating(true);
 
     const MyDocument = () => (
       <Document>
-        <Page size="A4" style={styles.page}>
-          {selectedFiles.map((file, index) => (
+        {selectedFiles.map((file, index) => (
+          <Page size="A4" style={styles.page} key={index}>
             <Image
               key={index}
               src={URL.createObjectURL(file)}
               style={styles.image}
             />
-          ))}
-        </Page>
+          </Page>
+        ))}
       </Document>
     );
 
@@ -146,7 +149,7 @@ const UploadAndGeneratePDF: React.FC = () => {
       toast({
         className: "bg-green-700 text-white font-bold",
         title: "Success",
-        description: "Your PDF is ready to download",
+        description: "Your PDF is ready to download!",
       });
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -158,6 +161,10 @@ const UploadAndGeneratePDF: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
   const updateTemplate = (status: { status: boolean; template?: any }) => {
     if (status.template) {
@@ -187,7 +194,7 @@ const UploadAndGeneratePDF: React.FC = () => {
             <div className="space-y-4">
               <Input
                 type="file"
-                accept="image/*, .heic, .avif"
+                accept="image/*, .heic"
                 multiple
                 onChange={handleFileChange}
                 className="w-full"
@@ -196,7 +203,7 @@ const UploadAndGeneratePDF: React.FC = () => {
                 type="text"
                 onChange={(e) => setFileName(e.target.value)}
                 className="w-full"
-                placeholder="eg: Database_management.pdf"
+                placeholder="e.g., document.pdf"
               />
 
               <div className="flex flex-wrap gap-4 mt-4">
@@ -209,25 +216,7 @@ const UploadAndGeneratePDF: React.FC = () => {
                       src={URL.createObjectURL(file)}
                       alt={`Preview ${index}`}
                       className="w-full h-full object-cover"
-                      onClick={() => setClickedImage(index + 1)}
                     />
-                    {clickedImage === index + 1 && (
-                      <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50 py-10 px-2">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt="Preview"
-                          className="max-w-full max-h-full rounded relative"
-                        />
-                        <Button
-                          className="absolute top-2 right-2 rounded-full"
-                          size={"icon"}
-                          onClick={() => setClickedImage(0)}
-                        >
-                          {" "}
-                          &times;
-                        </Button>
-                      </div>
-                    )}
                     <Button
                       size="icon"
                       className="absolute top-1 right-1 rounded-full"
@@ -243,10 +232,10 @@ const UploadAndGeneratePDF: React.FC = () => {
                 className="mt-4 w-full"
                 onClick={generatePDF}
                 disabled={
-                  isGenerating || selectedFiles.length === 0 || fileChanging
+                  isGenerating || selectedFiles.length === 0 || isRendering
                 }
               >
-                {fileChanging
+                {isRendering
                   ? "Rendering Image..."
                   : isGenerating
                   ? "Generating PDF..."
